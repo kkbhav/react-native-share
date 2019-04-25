@@ -1,30 +1,28 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- * @flow
- */
-
 import React, { Component } from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  Alert
-} from 'react-native';
+
+import { Alert, Button, Platform, TextInput, StyleSheet, Text, View } from 'react-native';
+
 import Share from 'react-native-share';
-import images from './src/imageBase64';
 
-const instructions = Platform.select({
-  ios: 'Press Cmd+R to reload,\n' +
-    'Cmd+D or shake for dev menu',
-  android: 'Double tap R on your keyboard to reload,\n' +
-    'Shake or press menu button for dev menu',
-});
+import images from './images/imagesBase64';
 
-type Props = {};
-export default class App extends Component<Props> {
+export default class App extends Component {
+  state = {
+    packageSearch: '',
+  };
+
+  /**
+   * You can use the method isPackageInstalled to find
+   * if a package is insalled. It returns a { isInstalled, message }
+   * only works on Android :/
+   */
+  checkIfPackageIsInstalled = async () => {
+    const { packageSearch } = this.state;
+
+    const { isInstalled } = await Share.isPackageInstalled(packageSearch);
+
+    Alert.alert(`Package: ${packageSearch}`, `${isInstalled ? 'Installed' : 'Not Installed'}`);
+  };
 
   constructor(props: Props) {
     super(props);
@@ -45,14 +43,58 @@ export default class App extends Component<Props> {
     return e;
   }
 
-  async onShareEmail() {
+  setPackageSearch = packageSearch => this.setState({ packageSearch });
+
+  /**
+   * This functions share multiple images that
+   * you send as the urls param
+   */
+  shareMultipleImages = async () => {
+    const shareOptions = {
+      title: 'Share file',
+      failOnCancel: false,
+      urls: [images.image1, images.image2],
+    };
+
+    // If you want, you can use a try catch, to parse
+    // the share response. If the user cancels, etc.
     try {
-      const shareOptions = {
-        title: 'Share file',
-        social: Share.Social.EMAIL,
-        failOnCancel: false,
-        urls: [images.image1, images.image2],
-      };
+      const ShareResponse = await Share.open(shareOptions);
+      this.setState({ result: JSON.stringify(ShareResponse, 0, 2) });
+    } catch (error) {
+      console.log('Error =>', error);
+      this.setState({ result: 'error: '.concat(this.getErrorString(error)) });
+    }
+  };
+
+  /**
+   * This functions share a image passed using the
+   * url param
+   */
+  shareSingleImage = async () => {
+    const shareOptions = {
+      title: 'Share file',
+      url: images.image1,
+    };
+
+    try {
+      const ShareResponse = await Share.open(shareOptions);
+      this.setState({ result: JSON.stringify(ShareResponse, 0, 2) });
+    } catch (error) {
+      console.log('Error =>', error);
+      this.setState({ result: 'error: '.concat(this.getErrorString(error)) });
+    }
+  };
+
+  onShareEmail = async () => {
+    const shareOptions = {
+      title: 'Share file',
+      social: Share.Social.EMAIL,
+      failOnCancel: false,
+      urls: [images.image1, images.image2],
+    };
+
+    try {
       const result = await Share.shareSingle(shareOptions);
       this.setState({ result: JSON.stringify(result, 0, 2) });
     } catch (e) {
@@ -62,68 +104,58 @@ export default class App extends Component<Props> {
     }
   }
 
-  async onShare() {
-    try {
-      const shareOptions = {
-        title: 'Share file',
-        failOnCancel: false,
-        urls: [images.image1, images.image2],
-      };
-      const result = await Share.open(shareOptions);
-      this.setState({ result: JSON.stringify(result, 0, 2) });
-    } catch (e) {
-      // Handle Error
-      console.warn(e);
-      this.setState({ result: 'error: '.concat(this.getErrorString(e)) });
-    }
-  }
-
-  async onShare2() {
-    try {
-      const shareOptions = {
-        title: 'Share file',
-        url: images.image1,
-      };
-      const result = await Share.open(shareOptions);
-      this.setState({ result: JSON.stringify(result, 0, 2) });
-    } catch (e) {
-      // Handle Error
-      this.setState({ result: 'error: '.concat(this.getErrorString(e)) });
-    }
-  }
-
-  isPackageInstalled() {
-    return Share.isPackageInstalled('com.xxx.xxx');
-  }
-
   render() {
+    const { packageSearch } = this.state;
+
     return (
       <View style={styles.container}>
-        <Text style={styles.welcome}>
-          Welcome to React Native!
-        </Text>
-        <Button title="Share via Social: EMAIL" onPress={() => this.onShareEmail()}/>
-        <Button title="Share 2 images" onPress={() => this.onShare()}/>
-        <Button title="Share single image" onPress={() => this.onShare2()}/>
-        <Button
-          title="Check package installed"
-          onPress={() =>
-            this.isPackageInstalled().then(({ isInstalled }) => Alert.alert(`isInstalled = ${isInstalled}`))
+        <Text style={styles.welcome}>Welcome to React Native Share Example!</Text>
+        <View style={styles.optionsRow}>
+          <View style={styles.button}>
+            <Button onPress={this.shareMultipleImages} title="Share Multiple Images" />
+          </View>
+          <View style={styles.button}>
+            <Button onPress={this.shareSingleImage} title="Share Single Image" />
+          </View>
+          <View style={styles.button}>
+            <Button title="Share via Social: EMAIL" onPress={this.onShareEmail}/>
+          </View>
+          {Platform.OS === 'android' && (
+          <View style={styles.searchPackageContainer}>
+            <TextInput
+              placeholder="Search for a Package"
+              onChangeText={this.setPackageSearch}
+              value={packageSearch}
+              style={styles.textInput}
+            />
+            <View>
+              <Button onPress={this.checkIfPackageIsInstalled} title="Check Package" />
+            </View>
+          </View>
+          )
           }
-        />
-        <Text style={{ marginTop: 20, fontSize: 20 }}>Result</Text>
-        <Text style={styles.result}>{this.state.result}</Text>
+          <Text style={{ marginTop: 20, fontSize: 20 }}>Result</Text>
+          <Text style={styles.result}>{this.state.result}</Text>
+        </View>
       </View>
     );
   }
 }
 
 const styles = StyleSheet.create({
+  button: {
+    marginBottom: 10,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
+  },
+  textInput: {
+    borderBottomColor: '#151313',
+    borderBottomWidth: 1,
+    marginRight: 10,
   },
   welcome: {
     fontSize: 20,
@@ -134,9 +166,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     margin: 10,
   },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
+  optionsRow: {
+    justifyContent: 'space-between',
+  },
+  searchPackageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
 });
